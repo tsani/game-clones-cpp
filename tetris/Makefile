@@ -9,6 +9,7 @@ LDFLAGS  = $(LIBS)
 
 all: obj/Application.o obj/main.o
 	@mkdir -p obj/
+	@mkdir -p bin/
 	$(LD) -o bin/$(BIN_NAME) obj/* $(LDFLAGS)
 
 clean:
