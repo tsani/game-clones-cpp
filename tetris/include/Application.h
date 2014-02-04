@@ -1,18 +1,24 @@
+#ifndef APPLICATION_H
+#define APPLICATION_H
+
 #include <SDL/SDL.h>
 #include <SDL/SDL_image.h>
 
 #include <string>
 #include <vector>
+#include <memory>
 #include <sstream>
 #include <iostream>
 #include <deque>
 
-enum ApplicationState
+#include "util_SDL.h"
+
+enum class AppState
 {
-    APPSTATE_RUNNING,
-    APPSTATE_FINISHED,
-    APPSTATE_NOTREADY,
-    APPSTATE_READY
+    running,
+    finished,
+    notReady,
+    ready
 };
 
 class Application
@@ -24,8 +30,15 @@ class Application
          */
         int run();
 
+        struct
+        {
+            const unsigned int height = 600;
+            const unsigned int width  = 800;
+            const unsigned int depth  = 32;
+        } screen;
+
         const unsigned int FRAMERATE = 60; // How many frames in one second?
-        const double FRAMETIME = 1.0 / (double) FRAMERATE * 1000.0; // How long is one frame? (in ms)
+        const unsigned int FRAMETIME = 1000 / FRAMERATE; // How long is one frame? (in ms)
 
     private:
         /** Update the game state. Returns false when the game should exit.
@@ -37,15 +50,24 @@ class Application
          */
         bool load();
 
+        /** Cleans up resources and calls SDL_Quit.
+         */
+        void cleanup();
+
         /** Draws the current game state to the screen.
          */
         void draw();
 
         /** Represents the current state of the application.
          */
-        ApplicationState m_state;
+        AppState m_state;
 
         /** The current score of the player.
          */
         int m_score;
+
+        Screen_ptr m_screen;
+
 };
+
+#endif

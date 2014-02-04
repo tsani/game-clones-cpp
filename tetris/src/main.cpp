@@ -2,6 +2,7 @@
 
 int main(int argc, char **argv)
 {
+    Application app {};
 
-    return EXIT_SUCCESS;
+    return app.run();
 }
