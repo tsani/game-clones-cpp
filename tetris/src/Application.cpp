@@ -1,8 +1,13 @@
 #include "Application.h"
 
 Application::Application()
-    : m_state(AppState::notReady), m_score(0)
+    : m_state(AppState::notReady), m_game(this)
 {
+}
+
+std::weak_ptr<SDL_Surface> Application::getScreen()
+{
+    return std::weak_ptr<SDL_Surface>(m_screen);
 }
 
 bool Application::load()
@@ -11,12 +16,13 @@ bool Application::load()
     SDL_Init(SDL_INIT_EVERYTHING);
     m_screen =
         Screen_ptr
-            (SDL_SetVideoMode(screen.width, 
-                              screen.height, 
-                              screen.depth, 
+            (SDL_SetVideoMode(screenWidth, 
+                              screenHeight, 
+                              screenDepth, 
                               SDL_HWSURFACE | SDL_DOUBLEBUF),
              EmptyDeleter<SDL_Surface>());
-    return true;
+
+    return m_game.load();
 }
 
 int Application::run()
@@ -48,10 +54,10 @@ int Application::run()
 
         thisTime = SDL_GetTicks(); // the current time
         deltaTime = thisTime - lastTime; // how long did it take to draw the last frame.
-        std::cerr << "This time = " << thisTime << " ; last time = " << lastTime << std::endl;
+        // std::cerr << "This time = " << thisTime << " ; last time = " << lastTime << std::endl;
         extraTime = deltaTime < FRAMETIME ? FRAMETIME - deltaTime : 0; // how much time is "left" in the current frame.
         
-        std::cerr << "Extra time: " << extraTime << std::endl;
+        // std::cerr << "Extra time: " << extraTime << std::endl;
 
         // true if the last frame took longer than 1/60 s to draw.
         skipFrame = deltaTime > FRAMETIME;
@@ -72,12 +78,15 @@ int Application::run()
 
 void Application::cleanup()
 {
+    m_game.cleanup();
     SDL_Quit();
 }
 
 void Application::update()
 {
     static SDL_Event event;
+
+    m_game.update();
 
     while ( SDL_PollEvent(&event) )
     {
@@ -87,13 +96,18 @@ void Application::update()
                 std::cerr << "Got quit signal." << std::endl;
                 m_state = AppState::finished;
                 break;
+            default:
+                m_game.handleEvent(event);
+                break;
         }
     }
-
 }
 
 void Application::draw()
 {
+    static Uint32 black = SDL_MapRGB(m_screen->format, 0, 0, 0);
+    SDL_FillRect(m_screen.get(), NULL, black); 
+    m_game.draw(m_screen);
     SDL_Flip(m_screen.get());
 }
 

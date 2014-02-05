@@ -7,11 +7,12 @@
 #include <string>
 #include <vector>
 #include <memory>
-#include <sstream>
+#include <map>
 #include <iostream>
-#include <deque>
 
 #include "util_SDL.h"
+
+#include "Game.h"
 
 enum class AppState
 {
@@ -30,15 +31,14 @@ class Application
          */
         int run();
 
-        struct
-        {
-            const unsigned int height = 600;
-            const unsigned int width  = 800;
-            const unsigned int depth  = 32;
-        } screen;
+        std::weak_ptr<SDL_Surface> getScreen();
 
-        const unsigned int FRAMERATE = 60; // How many frames in one second?
-        const unsigned int FRAMETIME = 1000 / FRAMERATE; // How long is one frame? (in ms)
+        static const unsigned int screenHeight = 700;
+        static const unsigned int screenWidth  = 950;
+        static const unsigned int screenDepth  = 32;
+
+        static const unsigned int FRAMERATE = 60; // How many frames in one second?
+        static const unsigned int FRAMETIME = 1000 / FRAMERATE; // How long is one frame? (in ms)
 
     private:
         /** Update the game state. Returns false when the game should exit.
@@ -62,12 +62,9 @@ class Application
          */
         AppState m_state;
 
-        /** The current score of the player.
-         */
-        int m_score;
-
         Screen_ptr m_screen;
 
+        Game m_game;
 };
 
 #endif
