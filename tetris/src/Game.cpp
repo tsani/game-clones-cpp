@@ -31,10 +31,10 @@ bool Game::load()
     SDL_FillRect(fallenSurface.get(), NULL, SDL_MapRGB(m_owner->getScreen().lock()->format, 64, 64, 255));
     SDL_FillRect(freeSurface.get(), makeSafeRectPtr(8, 8, 16, 16).get(), SDL_MapRGB(m_owner->getScreen().lock()->format, 128, 128, 128));
 
-    m_blockSurfaces[BlockState::falling] = std::move(fallingSurface);
-    m_blockSurfaces[BlockState::pivot]   = std::move(fallingSurface);
-    m_blockSurfaces[BlockState::fallen]  = std::move(fallenSurface);
-    m_blockSurfaces[BlockState::free]    = std::move(freeSurface);
+    m_blockSurfaces[BlockState::falling] = fallingSurface;
+    m_blockSurfaces[BlockState::pivot]   = (fallingSurface);
+    m_blockSurfaces[BlockState::fallen]  = (fallenSurface);
+    m_blockSurfaces[BlockState::free]    = (freeSurface);
 
     // // for fancy input handling, which we don't need.
     // m_keyboard = SDL_GetKeyboardState();
@@ -99,10 +99,10 @@ void Game::handleEvent(SDL_Event const& event)
             switch ( event.key.keysym.sym )
             {
                 case SDLK_LEFT:
-                    movePiece(1, -1);
+                    std::cerr << "Piece moved left: " << movePiece(1, -1) << std::endl;
                     break;
                 case SDLK_RIGHT:
-                    movePiece(1, 1);
+                    std::cerr << "Piece moved right!" << movePiece(1, 1) << std::endl;
                     break;
                 case SDLK_z:
                     rotateCCW();
@@ -128,13 +128,10 @@ void Game::draw(Surface_ptr a_parent)
     {
         for ( unsigned short j = 0; j < wellHeight; j++ )
         {
-            if ( m_well[i][j] != BlockState::free )
-            {
-                drawLocation.x = m_wellPosition.x + (short)(i * blockSide); 
-                drawLocation.y = m_wellPosition.y + (short)(j * blockSide);
-                if ( SDL_BlitSurface(m_blockSurfaces[m_well[i][j]].get(), nullptr, a_parent.get(), &drawLocation) != 0 )
-                    std::cerr << "Failed to draw block at " << i << ", " << j << std::endl;
-            }
+            drawLocation.x = m_wellPosition.x + (short)(i * blockSide); 
+            drawLocation.y = m_wellPosition.y + (short)(j * blockSide);
+            if ( SDL_BlitSurface(m_blockSurfaces[m_well[i][j]].get(), nullptr, a_parent.get(), &drawLocation) != 0 )
+                std::cerr << "Failed to draw block at " << i << ", " << j << std::endl;
         }
     }
 }
@@ -224,11 +221,11 @@ bool Game::movePiece(unsigned int dx, int direction, std::vector<std::pair<int, 
     {
         if ( ! ( p.first + direction_ >= 0 && 
                  p.first + direction_ < wellWidth && 
-                 (m_well[p.first + direction_][p.second] == BlockState::falling ||
-                  m_well[p.first + direction_][p.second] == BlockState::pivot)
+                 m_well[p.first + direction_][p.second] != BlockState::fallen
                )
            )
         {
+            std::cerr << "Piece cannot be moved due to collision." << std::endl;
             return false;
         }
         else

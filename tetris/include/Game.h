@@ -8,7 +8,7 @@
 #include <random>
 #include <functional>
 
-extern char PIECES[7][4][5][5]; // Defined in TetrisData.cpp
+extern const char PIECES[7][4][5][5]; // Defined in TetrisData.cpp
 
 class Application;
 

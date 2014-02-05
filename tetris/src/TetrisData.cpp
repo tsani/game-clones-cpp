@@ -1,6 +1,6 @@
 #include "Game.h"
 
-char PIECES[7][4][5][5] = // one dimension for the kind of piece, then for its rotation, then the x data, then the y data.
+const char PIECES[7][4][5][5] = // one dimension for the kind of piece, then for its rotation, then the x data, then the y data.
     {
         { // 1 = long piece
             {
