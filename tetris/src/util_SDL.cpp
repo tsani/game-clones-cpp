@@ -16,3 +16,13 @@ SDL_Surface *loadOptimized(std::string const& path)
     return optimized;
 }
 
+SDL_Rect makeRect(short x, short y, unsigned short w, unsigned short h)
+{
+    return SDL_Rect { x, y, w, h };
+}
+
+Rect_ptr makeSafeRectPtr(short x, short y, unsigned short w, unsigned short h)
+{
+    return Rect_ptr { new SDL_Rect { x, y, w, h } };
+}
+

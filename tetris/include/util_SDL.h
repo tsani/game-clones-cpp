@@ -24,6 +24,7 @@ struct SDL_SurfaceDeleter
 
 typedef std::shared_ptr<SDL_Surface> Surface_ptr;
 typedef std::shared_ptr<SDL_Surface> Screen_ptr;
+typedef std::shared_ptr<SDL_Rect>    Rect_ptr;
 
 /** This utility function produces a shared_ptr to an SDL_Surface with the correct deleter, namely
  * SDL_FreeSurface attached. This will result in the correct destruction of the surface when all
@@ -33,4 +34,7 @@ Surface_ptr makeSafeSurfacePtr(SDL_Surface *surface);
 
 SDL_Surface * loadOptimized(std::string const& path);
 
+Rect_ptr makeSafeRectPtr(short x, short y, unsigned short w, unsigned short h);
+
+SDL_Rect makeRect(short x, short y, unsigned short w, unsigned short h);
 #endif
