@@ -75,20 +75,53 @@ void Game::update()
     frameNumber++;
 }
 
-void Game::spawnPiece()
+void Game::removeFallingPiece()
 {
-    int newPieceType = m_rdistribution(m_rengine);
-    
-    for ( unsigned int i = 3; i < 8; i++ )
+    for ( auto &p : findPiece() )
     {
-        for ( unsigned int j = 0; j < 3; j++ )
+        m_well[p.first][p.second] = BlockState::free;
+    }
+}
+
+bool Game::spawnPiece(int x, int y, int pieceID, int rotationID)
+{
+    pieceID == -1 ? pieceID = m_rdistribution(m_rengine) : pieceID;
+
+    if ( pieceID < 0 || pieceID > 6 || rotationID < 0 || rotationID > 3 )
+        throw std::exception(); // TODO make this more descriptive.
+
+    std::map<std::pair<int, int>, BlockState> pieceData;
+    
+    for ( int i = 0; i < 5; i++ )
+    {
+        for ( int j = 0; j < 5; j++ )
         {
-            if ( PIECES[newPieceType][0][j + 2][i - 3] != 0 )
-                m_well[i][j] = PIECES[newPieceType][0][j + 2][i - 3] == 1 ? BlockState::falling : BlockState::pivot;
+            if ( PIECES[pieceID][rotationID][j][i] != 0 )
+            {
+                int px = x - 2 + i, py = y - 2 + j; // where in the well block piece[j + 2][i] is going.
+                // This check guarantees that the new block of the piece is in the well and not colliding
+                if ( px < wellWidth && px >= 0 && py < wellHeight && py >= 0 && m_well[px][py] != BlockState::fallen)
+                    pieceData[{px, py}] = PIECES[pieceID][rotationID][j][i] == 1 ? BlockState::falling : BlockState::pivot;
+                else
+                    return false;
+            }
         }
     }
 
-    std::cerr << "Spawned piece " << newPieceType << "." << std::endl;
+    // if we make it here, it's that the block is safe to place.
+
+    removeFallingPiece(); // we remove the currently falling piece to avoid there being two falling pieces at once.
+    for ( auto &p : pieceData )
+    {
+        m_well[p.first.first][p.first.second] = p.second;
+    }
+
+    m_pieceID = pieceID;
+    m_rotationLevel = rotationID;
+
+    std::cerr << "Spawned piece " << pieceID << "." << std::endl;
+
+    return true;
 }
 
 void Game::handleEvent(SDL_Event const& event)
@@ -105,10 +138,10 @@ void Game::handleEvent(SDL_Event const& event)
                     std::cerr << "Piece moved right!" << movePiece(1, 1) << std::endl;
                     break;
                 case SDLK_z:
-                    rotateCCW();
+                    rotate(1);
                     break;
                 case SDLK_x:
-                    rotateCW();
+                    rotate(-1);
                     break;
                 case SDLK_SPACE:
                     fall();
@@ -154,6 +187,7 @@ bool Game::updateBlocks()
                 else
                 {
                     collideBlocks(i, j);
+                    checkTetris();
                     collided = true;
                     spawnPiece(); // spawn a new piece seeing as the current one is finished now.
                 }
@@ -195,16 +229,43 @@ void Game::collideBlocks(int x, int y)
 
 void Game::checkTetris()
 {
+    for ( int y = 0; y < wellHeight; y++ )
+    {
+        int x = 0;
+        for ( x = 0; x < wellWidth; x++ )
+        {
+            if ( m_well[x][y] != BlockState::fallen )
+                break;
+        }
 
+        if ( x == wellWidth ) // TETRIS !! // TODO something with bells and whistles
+        {
+            for ( int y_ = y; y_ > 0; y_-- ) // we don't want this loop to touch the top row
+            {
+                for ( x = 0; x < wellWidth; x++ ) // turns out we can reuse our x variable.
+                    m_well[x][y_] = m_well[x][y_ - 1]; // shift down
+            }
+
+            for ( x = 0; x < wellWidth; x++ )
+                m_well[x][0] = BlockState::free; // simply erase the top row
+        }
+    }
 }
 
-void Game::rotateCW()
+bool Game::rotate(int direction)
 {
+    auto p = findPivot();
+    auto direction_ = std::abs(direction) / direction;
+    int newRotation;
 
-}
+    if ( m_rotationLevel + direction_ < 0 )
+        newRotation = 3;
+    else if ( m_rotationLevel + direction_ > 3 )
+        newRotation = 0;
+    else
+        newRotation = m_rotationLevel + direction_;
 
-void Game::rotateCCW()
-{
+    return spawnPiece(p.x, p.y, m_pieceID, newRotation);
 
 }
 
@@ -268,7 +329,17 @@ SDL_Rect Game::findPivot()
 
 std::vector<std::pair<int, int>> Game::findPiece()
 {
-    SDL_Rect pivot = findPivot();
+    SDL_Rect pivot; 
+    
+    try
+    {
+        pivot = findPivot();
+    }
+    catch(std::exception)
+    {
+        return std::vector<std::pair<int, int>>();
+    }
+
     std::vector<std::pair<int, int>> piece;
 
     short xstart = pivot.x - 2 < 0 ? 0 : pivot.x - 2;
