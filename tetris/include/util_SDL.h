@@ -3,6 +3,7 @@
 
 #include <SDL/SDL.h>
 #include <SDL/SDL_image.h>
+#include <SDL/SDL_ttf.h>
 #include <iostream>
 #include <memory>
 
@@ -22,9 +23,18 @@ struct SDL_SurfaceDeleter
     }
 };
 
+struct TTF_FontDeleter
+{
+    void operator() (TTF_Font *ptr) const
+    {
+        TTF_CloseFont(ptr);
+    }
+};
+
 typedef std::shared_ptr<SDL_Surface> Surface_ptr;
 typedef std::shared_ptr<SDL_Surface> Screen_ptr;
 typedef std::shared_ptr<SDL_Rect>    Rect_ptr;
+typedef std::shared_ptr<TTF_Font>    Font_ptr;
 
 /** This utility function produces a shared_ptr to an SDL_Surface with the correct deleter, namely
  * SDL_FreeSurface attached. This will result in the correct destruction of the surface when all
@@ -32,7 +42,9 @@ typedef std::shared_ptr<SDL_Rect>    Rect_ptr;
  */
 Surface_ptr makeSafeSurfacePtr(SDL_Surface *surface);
 
-SDL_Surface * loadOptimized(std::string const& path);
+SDL_Surface * loadOptimizedImage(std::string const& path);
+
+Font_ptr makeSafeFontPtr(TTF_Font *font);
 
 Rect_ptr makeSafeRectPtr(short x, short y, unsigned short w, unsigned short h);
 

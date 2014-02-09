@@ -16,6 +16,11 @@ SDL_Surface *loadOptimized(std::string const& path)
     return optimized;
 }
 
+Font_ptr makeSafeFontPtr(TTF_Font *ptr)
+{
+    return Font_ptr { ptr, TTF_FontDeleter() };
+}
+
 SDL_Rect makeRect(short x, short y, unsigned short w, unsigned short h)
 {
     return SDL_Rect { x, y, w, h };

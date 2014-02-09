@@ -7,7 +7,7 @@
 Game::Game(Application* a_owner)
 {
     m_owner = a_owner;
-    m_speed = 30;
+    m_speed = 3;
 
     m_rdistribution = std::uniform_int_distribution<int>(0, 6); // there are 7 possible pieces
 
@@ -32,17 +32,29 @@ bool Game::load()
     SDL_FillRect(freeSurface.get(), makeSafeRectPtr(8, 8, 16, 16).get(), SDL_MapRGB(m_owner->getScreen().lock()->format, 128, 128, 128));
 
     m_blockSurfaces[BlockState::falling] = fallingSurface;
-    m_blockSurfaces[BlockState::pivot]   = (fallingSurface);
-    m_blockSurfaces[BlockState::fallen]  = (fallenSurface);
-    m_blockSurfaces[BlockState::free]    = (freeSurface);
-
-    // // for fancy input handling, which we don't need.
-    // m_keyboard = SDL_GetKeyboardState();
+    m_blockSurfaces[BlockState::pivot]   = fallingSurface;
+    m_blockSurfaces[BlockState::fallen]  = fallenSurface;
+    m_blockSurfaces[BlockState::free]    = freeSurface;
 
     m_wellPosition.x = m_owner->screenWidth / 2 - wellWidth * blockSide / 2;
     m_wellPosition.y = m_owner->screenHeight / 2 - wellHeight * blockSide / 2;
 
-    spawnPiece(); // initial piece
+    m_piecePreviewPosition.x = m_wellPosition.x + (wellWidth + 2) * blockSide;
+    m_piecePreviewPosition.y = m_wellPosition.y + 2 * blockSide;
+
+    m_statusLocation.x = 20;
+    m_statusLocation.y = 100;
+
+    m_statusFont    = makeSafeFontPtr(TTF_OpenFont("resources/statusfont.ttf", 20));
+
+    m_statusColorFg = { 255, 255, 255 };
+    m_statusColorBg = { 0, 0, 0 };
+
+    renderScore();
+    renderLevel();
+
+    m_nextPieceID = m_rdistribution(m_rengine);
+    newPiece();
 
     return true;
 }
@@ -56,21 +68,9 @@ void Game::update()
 {
     static unsigned long int frameNumber = 0;
 
-    if ( frameNumber % m_speed == 0 )
+    // Make the blocks fall only once every (speedLimit / m_speed) frames
+    if ( frameNumber % (speedLimit / m_speed) == 0 )
         updateBlocks();
-
-    // // Handle input // lol i'm not in the mood for sophisticated input handling
-    // if ( m_keyboard[SDL_SCANCODE_LEFT] )
-    // {
-    //     if ( m_keyTimes[SDL_SCANCODE_LEFT] == 0 )
-    //         // perform left action
-    //     else
-    //         m_keyTimes[SDL_SCANCODE_LEFT]++;
-    //     if ( m_keyTimes[SDL_SCANCODE_LEFT] % repeatThreshold )
-    //         // perform left action
-    // }
-    // else
-    //     m_keyTimes[SDL_SCANCODE_LEFT] = 0;
 
     frameNumber++;
 }
@@ -83,10 +83,8 @@ void Game::removeFallingPiece()
     }
 }
 
-bool Game::spawnPiece(int x, int y, int pieceID, int rotationID)
+bool Game::spawnPiece(int x, int y, unsigned int pieceID, int rotationID)
 {
-    pieceID == -1 ? pieceID = m_rdistribution(m_rengine) : pieceID;
-
     if ( pieceID < 0 || pieceID > 6 || rotationID < 0 || rotationID > 3 )
         throw std::exception(); // TODO make this more descriptive.
 
@@ -111,17 +109,27 @@ bool Game::spawnPiece(int x, int y, int pieceID, int rotationID)
     // if we make it here, it's that the block is safe to place.
 
     removeFallingPiece(); // we remove the currently falling piece to avoid there being two falling pieces at once.
+
+    // place the new piece
     for ( auto &p : pieceData )
     {
         m_well[p.first.first][p.first.second] = p.second;
     }
 
+    // guarantee that m_pieceID and m_rotationLevel matche the values we were given.
     m_pieceID = pieceID;
     m_rotationLevel = rotationID;
 
-    std::cerr << "Spawned piece " << pieceID << "." << std::endl;
+    // diagnostic message
+    // std::cerr << "Spawned piece " << pieceID << "." << std::endl;
 
     return true;
+}
+
+void Game::newPiece()
+{
+    spawnPiece(pieceStartX, pieceStartY, m_nextPieceID);
+    m_nextPieceID = m_rdistribution(m_rengine);
 }
 
 void Game::handleEvent(SDL_Event const& event)
@@ -132,10 +140,12 @@ void Game::handleEvent(SDL_Event const& event)
             switch ( event.key.keysym.sym )
             {
                 case SDLK_LEFT:
-                    std::cerr << "Piece moved left: " << movePiece(1, -1) << std::endl;
+                    movePiece(1, -1);
+                    // std::cerr << "Piece moved left: " << status << std::endl;
                     break;
                 case SDLK_RIGHT:
-                    std::cerr << "Piece moved right!" << movePiece(1, 1) << std::endl;
+                    movePiece(1, 1);
+                    // std::cerr << "Piece moved right!" << status << std::endl;
                     break;
                 case SDLK_z:
                     rotate(1);
@@ -163,10 +173,48 @@ void Game::draw(Surface_ptr a_parent)
         {
             drawLocation.x = m_wellPosition.x + (short)(i * blockSide); 
             drawLocation.y = m_wellPosition.y + (short)(j * blockSide);
-            if ( SDL_BlitSurface(m_blockSurfaces[m_well[i][j]].get(), nullptr, a_parent.get(), &drawLocation) != 0 )
+            if ( SDL_BlitSurface(m_blockSurfaces[m_well[i][j]].get(), 
+                                   nullptr, 
+                                   a_parent.get(), 
+                                   &drawLocation) != 0 )
                 std::cerr << "Failed to draw block at " << i << ", " << j << std::endl;
         }
     }
+
+    drawLocation = m_statusLocation;
+    if ( SDL_BlitSurface(m_scoreSurface.get(), nullptr, a_parent.get(), &drawLocation) 
+            != 0 )
+        std::cerr << "Failed to draw score surface." << std::endl;
+
+    drawLocation.y += 3 * m_scoreSurface->h / 2;
+    if ( SDL_BlitSurface(m_levelSurface.get(), nullptr, a_parent.get(), &drawLocation)
+            != 0 )
+        std::cerr << "Failed to draw level surface." << std::endl;
+
+    drawPreviewBox(a_parent);
+}
+
+void Game::drawPreviewBox(Surface_ptr a_parent)
+{
+    static SDL_Rect drawLocation { 0, 0, 0, 0 };
+
+    for ( int i = 0; i < 5; i++ )
+    {   
+        drawLocation.x = m_piecePreviewPosition.x + i * blockSide;
+
+        for ( int j = 0; j < 5; j++ )
+        {
+            drawLocation.y = m_piecePreviewPosition.y = j * blockSide;
+            if( SDL_BlitSurface(
+                        (m_blockSurfaces[PIECES[m_nextPieceID][0][j][i] == 0 ? // I am not a smart man.
+                            BlockState::free : BlockState::falling].get()),
+                        nullptr,
+                        a_parent.get(),
+                        &drawLocation) != 0 )
+                std::cerr << "Failed to draw previed block at " << i << ", " << j << std::endl;
+        }
+    }
+                                  
 }
 
 bool Game::updateBlocks()
@@ -187,9 +235,9 @@ bool Game::updateBlocks()
                 else
                 {
                     collideBlocks(i, j);
-                    checkTetris();
+                    handleRows();
                     collided = true;
-                    spawnPiece(); // spawn a new piece seeing as the current one is finished now.
+                    newPiece(); // spawn a new piece seeing as the current one is finished now.
                 }
             }
         }
@@ -227,8 +275,25 @@ void Game::collideBlocks(int x, int y)
         collideBlocks(x, y - 1);
 }
 
-void Game::checkTetris()
+void Game::removeRows(std::vector<int> && a_rows)
 {
+    for ( auto &row : a_rows )
+    {
+        for ( int y = row; y > 0; y-- )
+        {
+            for ( int x = 0; x < wellWidth; x++ )
+                m_well[x][y] = m_well[x][y - 1];
+        }
+    }
+
+    for ( int x = 0; x < wellWidth; x++ )
+        m_well[x][0] = BlockState::free;
+}
+
+std::vector<int> Game::getFullRows()
+{
+    std::vector<int> rows;
+
     for ( int y = 0; y < wellHeight; y++ )
     {
         int x = 0;
@@ -240,15 +305,58 @@ void Game::checkTetris()
 
         if ( x == wellWidth ) // TETRIS !! // TODO something with bells and whistles
         {
-            for ( int y_ = y; y_ > 0; y_-- ) // we don't want this loop to touch the top row
-            {
-                for ( x = 0; x < wellWidth; x++ ) // turns out we can reuse our x variable.
-                    m_well[x][y_] = m_well[x][y_ - 1]; // shift down
-            }
-
-            for ( x = 0; x < wellWidth; x++ )
-                m_well[x][0] = BlockState::free; // simply erase the top row
+            rows.push_back(y);
+            // NOTE there may be a glitch here if the player fills the top row, although afaict, that is impossible (the player would lose).
         }
+    }
+
+    return rows;
+}
+
+void Game::renderLevel()
+{
+    static std::stringstream sb;
+
+    sb.clear();
+    sb.str("");
+    sb << "Speed: " << m_speed;
+    m_levelSurface = makeSafeSurfacePtr(TTF_RenderText_Shaded(m_statusFont.get(), sb.str().c_str(), m_statusColorFg, m_statusColorBg));
+}
+
+void Game::renderScore()
+{
+    static std::stringstream sb;
+
+    sb.clear();
+    sb.str("");
+    sb << "Score: " << m_score;
+    m_scoreSurface = makeSafeSurfacePtr(TTF_RenderText_Shaded(m_statusFont.get(), sb.str().c_str(), m_statusColorFg, m_statusColorBg));
+}
+
+void Game::handleSpeed()
+{
+
+    // +1 to account for the fact that with less than speedStep lines cleared, the division yields zero.
+    unsigned int ts = m_clearedLines / speedStep + 1;
+    if ( m_speed < ts )
+    {
+        m_speed = ts;
+        // std::cerr << "Speed up! " << ts << std::endl;
+        renderLevel();
+    }
+}
+
+void Game::handleRows()
+{
+    std::vector<int> rows = getFullRows();
+
+    if ( rows.size() > 0)
+    {  
+        m_score += baseRowScore * std::pow(rows.size(), rows.size()); // TODO bells!!!
+        m_clearedLines += rows.size();
+        removeRows(std::move(rows));
+        handleSpeed();
+        renderScore();;
     }
 }
 
@@ -265,6 +373,7 @@ bool Game::rotate(int direction)
     else
         newRotation = m_rotationLevel + direction_;
 
+    // spawnPiece will take care of removing the old piece from the well, and will effectively replace it by its rotated version.
     return spawnPiece(p.x, p.y, m_pieceID, newRotation);
 
 }
@@ -286,7 +395,7 @@ bool Game::movePiece(unsigned int dx, int direction, std::vector<std::pair<int, 
                )
            )
         {
-            std::cerr << "Piece cannot be moved due to collision." << std::endl;
+            // std::cerr << "Piece cannot be moved due to collision." << std::endl;
             return false;
         }
         else

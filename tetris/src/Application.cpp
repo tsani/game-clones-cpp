@@ -22,6 +22,8 @@ bool Application::load()
                               SDL_HWSURFACE | SDL_DOUBLEBUF),
              EmptyDeleter<SDL_Surface>());
 
+    TTF_Init();
+
     return m_game.load();
 }
 
