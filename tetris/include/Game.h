@@ -1,14 +1,15 @@
 #ifndef GAME_H
 #define GAME_H
 
-#include "util_SDL.h"
-
 #include <map>
 #include <memory>
 #include <random>
 #include <functional>
 #include <string>
 #include <sstream>
+
+#include "State.h"
+#include "util_SDL.h"
 
 extern const char PIECES[7][4][5][5]; // Defined in TetrisData.cpp
 
@@ -22,16 +23,17 @@ enum class BlockState : int
     free    = 0   // refers to an empty block
 };
 
-class Game
+class Game final
+    : public State
 {
     public:
         Game(Application* a_owner);
 
-        bool load();
-        void cleanup();
-        void update();
-        void handleEvent(SDL_Event const& event);
-        void draw(Surface_ptr a_parent);
+        virtual void load() override;
+        virtual void cleanup() override;
+        virtual void update() override;
+        virtual void handleEvent(SDL_Event const& event) override;
+        virtual void draw(Surface_ptr a_parent) override;
 
 
         static const unsigned short wellWidth    = 10;
@@ -129,6 +131,11 @@ class Game
          */
         void fall();
 
+        Application *getOwner()
+        {
+            return (Application*)m_parent;
+        }
+
         unsigned int m_score; // the player's score 
         unsigned int m_clearedLines; // number of lines cleared by the player
         unsigned int m_speed;    // the inverse speed of the falling blocks
@@ -144,8 +151,6 @@ class Game
 
         std::default_random_engine m_rengine; // for the randomly generated block types
         std::uniform_int_distribution<int> m_rdistribution;
-
-        Application* m_owner;    // used to get a reference to the screen.
 
         Font_ptr m_statusFont;   // the font used to draw the level number and the score.
         Surface_ptr m_scoreSurface, // the text is rendered into these surfaces only when it changes.

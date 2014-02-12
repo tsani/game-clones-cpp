@@ -7,7 +7,7 @@ CXXFLAGS = -Wall -g -x c++ -fexceptions `sdl-config --cflags` -I include -std=c+
 LIBS     = `sdl-config --libs` -lSDL_image -lSDL_ttf
 LDFLAGS  = $(LIBS)
 
-all: obj/util_SDL.o obj/TetrisData.o obj/Application.o obj/Game.o obj/main.o
+all: obj/util_SDL.o obj/State.o obj/TetrisData.o obj/Application.o obj/Game.o obj/main.o
 	@mkdir -p obj/
 	@mkdir -p bin/
 	$(LD) -o bin/$(BIN_NAME) obj/* $(LDFLAGS)

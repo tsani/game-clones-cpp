@@ -5,8 +5,8 @@
 #include <cmath>
 
 Game::Game(Application* a_owner)
+    : State (a_owner)
 {
-    m_owner = a_owner;
     m_speed = 3;
 
     m_rdistribution = std::uniform_int_distribution<int>(0, 6); // there are 7 possible pieces
@@ -18,7 +18,7 @@ Game::Game(Application* a_owner)
             m_well[i][j] = BlockState::free;
 }
 
-bool Game::load()
+void Game::load()
 {
     // // Don't have resources yet.
     // m_blockSurfaces[BlockState::falling] = makeSafeSurfacePtr(loadOptimized("resources/falling-block.png"));
@@ -27,17 +27,17 @@ bool Game::load()
     Surface_ptr fallingSurface = makeSafeSurfacePtr(SDL_CreateRGBSurface(SDL_HWSURFACE, blockSide, blockSide, Application::screenDepth, 0, 0, 0, 0));
     Surface_ptr fallenSurface  = makeSafeSurfacePtr(SDL_CreateRGBSurface(SDL_HWSURFACE, blockSide, blockSide, Application::screenDepth, 0, 0, 0, 0));
     Surface_ptr freeSurface = makeSafeSurfacePtr(SDL_CreateRGBSurface(SDL_HWSURFACE, blockSide, blockSide, Application::screenDepth, 0, 0, 0, 0));
-    SDL_FillRect(fallingSurface.get(), NULL, SDL_MapRGB(m_owner->getScreen().lock()->format, 255, 64, 64));
-    SDL_FillRect(fallenSurface.get(), NULL, SDL_MapRGB(m_owner->getScreen().lock()->format, 64, 64, 255));
-    SDL_FillRect(freeSurface.get(), makeSafeRectPtr(8, 8, 16, 16).get(), SDL_MapRGB(m_owner->getScreen().lock()->format, 128, 128, 128));
+    SDL_FillRect(fallingSurface.get(), NULL, SDL_MapRGB(getOwner()->getScreen().lock()->format, 255, 64, 64));
+    SDL_FillRect(fallenSurface.get(), NULL, SDL_MapRGB(getOwner()->getScreen().lock()->format, 64, 64, 255));
+    SDL_FillRect(freeSurface.get(), makeSafeRectPtr(8, 8, 16, 16).get(), SDL_MapRGB(getOwner()->getScreen().lock()->format, 128, 128, 128));
 
     m_blockSurfaces[BlockState::falling] = fallingSurface;
     m_blockSurfaces[BlockState::pivot]   = fallingSurface;
     m_blockSurfaces[BlockState::fallen]  = fallenSurface;
     m_blockSurfaces[BlockState::free]    = freeSurface;
 
-    m_wellPosition.x = m_owner->screenWidth / 2 - wellWidth * blockSide / 2;
-    m_wellPosition.y = m_owner->screenHeight / 2 - wellHeight * blockSide / 2;
+    m_wellPosition.x = getOwner()->screenWidth / 2 - wellWidth * blockSide / 2;
+    m_wellPosition.y = getOwner()->screenHeight / 2 - wellHeight * blockSide / 2;
 
     m_piecePreviewPosition.x = m_wellPosition.x + (wellWidth + 2) * blockSide;
     m_piecePreviewPosition.y = m_wellPosition.y + 2 * blockSide;
@@ -56,7 +56,7 @@ bool Game::load()
     m_nextPieceID = m_rdistribution(m_rengine);
     newPiece();
 
-    return true;
+    State::load();
 }
 
 void Game::cleanup()

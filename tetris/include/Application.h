@@ -13,17 +13,12 @@
 
 #include "util_SDL.h"
 
+#include "State.h"
 #include "Game.h"
 
-enum class AppState
-{
-    running,
-    finished,
-    notReady,
-    ready
-};
 
-class Application
+class Application final
+    : public State
 {
     public:
         Application();
@@ -44,28 +39,26 @@ class Application
     private:
         /** Update the game state. Returns false when the game should exit.
          */
-        void update();
+        void update () override;
 
         /** Loads the initial game resources. Return values represents success.
          * This method will set the application state to APPSTATE_READY.
          */
-        bool load();
+        void load () override;
 
         /** Cleans up resources and calls SDL_Quit.
          */
-        void cleanup();
+        void cleanup () override;
 
         /** Draws the current game state to the screen.
          */
-        void draw();
+        void draw (Surface_ptr a_parent) override;
 
         /** Represents the current state of the application.
          */
-        AppState m_state;
+//        AppState m_state;
 
         Screen_ptr m_screen;
-
-        Game m_game;
 };
 
 #endif

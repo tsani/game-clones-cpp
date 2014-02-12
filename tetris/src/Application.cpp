@@ -1,8 +1,9 @@
 #include "Application.h"
 
 Application::Application()
-    : m_state(AppState::notReady), m_game(this)
+    : State(nullptr) 
 {
+    m_child = State_ptr { new Game(this) };
 }
 
 std::weak_ptr<SDL_Surface> Application::getScreen()
@@ -10,9 +11,8 @@ std::weak_ptr<SDL_Surface> Application::getScreen()
     return std::weak_ptr<SDL_Surface>(m_screen);
 }
 
-bool Application::load()
+void Application::load()
 {
-    m_state = AppState::ready;
     SDL_Init(SDL_INIT_EVERYTHING);
     m_screen =
         Screen_ptr
@@ -24,18 +24,14 @@ bool Application::load()
 
     TTF_Init();
 
-    return m_game.load();
+    State::load();
 }
 
 int Application::run()
 {
-    if ( !load() )
-    {
-        std::cerr << "Loading failed. Exiting." << std::endl;
-        return EXIT_FAILURE;
-    }
+    load ();
 
-    m_state = AppState::running;
+    activate ();
 
     Uint32 lastTime = 0, 
            thisTime = 0,
@@ -45,12 +41,14 @@ int Application::run()
 
     lastTime = SDL_GetTicks();
 
-    update();
+    m_child->activate();
 
-    while ( m_state == AppState::running )
+    update ();
+
+    while ( m_status == AppState::running )
     {
         if ( !skipFrame )
-            draw();
+            draw (m_screen);
         else
             std::cerr << "Skipped frame!" << std::endl;
 
@@ -73,14 +71,13 @@ int Application::run()
         update();
     }
 
-    cleanup();
-
     return EXIT_SUCCESS;
 }
 
 void Application::cleanup()
 {
-    m_game.cleanup();
+    State::cleanup();
+
     SDL_Quit();
 }
 
@@ -88,28 +85,31 @@ void Application::update()
 {
     static SDL_Event event;
 
-    m_game.update();
-
     while ( SDL_PollEvent(&event) )
     {
         switch ( event.type )
         {
             case SDL_QUIT:
                 std::cerr << "Got quit signal." << std::endl;
-                m_state = AppState::finished;
+                cleanup();
                 break;
             default:
-                m_game.handleEvent(event);
+                handleEvent(event); // this will pass the event on to the child
                 break;
         }
     }
+
+    State::update();
+
+    if ( m_child == nullptr ) // if the child got nexted, then there is no more game
+        cleanup(); // cleanup to finish this state, which will terminate the main loop
 }
 
-void Application::draw()
+void Application::draw(Surface_ptr a_parent)
 {
-    static Uint32 black = SDL_MapRGB(m_screen->format, 0, 0, 0);
-    SDL_FillRect(m_screen.get(), NULL, black); 
-    m_game.draw(m_screen);
-    SDL_Flip(m_screen.get());
+    static Uint32 black = SDL_MapRGB (m_screen->format, 0, 0, 0);
+    SDL_FillRect (m_screen.get(), NULL, black); 
+    State::draw (m_screen);
+    SDL_Flip (m_screen.get());
 }
 
