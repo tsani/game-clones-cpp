@@ -16,7 +16,9 @@ void State::update()
         {
             m_child->cleanup ();
             m_child = m_child->m_next;
-            m_child->activate ();
+
+            if ( m_child != nullptr)
+                m_child->activate ();
         }
     }
 
@@ -53,6 +55,9 @@ void State::cleanup ()
 
 void State::activate ()
 {
+    if ( m_status == AppState::notReady )
+        load();
+
     if ( m_status == AppState::ready )
         m_status = AppState::running;
     else

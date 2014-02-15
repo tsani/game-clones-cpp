@@ -101,7 +101,7 @@ void Application::update()
 
     State::update();
 
-    if ( m_child == nullptr ) // if the child got nexted, then there is no more game
+    if ( m_child == nullptr ) // if the child got nexted into null, then there is no more game
         cleanup(); // cleanup to finish this state, which will terminate the main loop
 }
 

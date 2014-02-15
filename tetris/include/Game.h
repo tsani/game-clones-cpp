@@ -7,13 +7,21 @@
 #include <functional>
 #include <string>
 #include <sstream>
+#include <cmath>
 
 #include "State.h"
 #include "util_SDL.h"
+#include "GameOverState.h"
 
 extern const char PIECES[7][4][5][5]; // Defined in TetrisData.cpp
 
 class Application;
+
+class GameOverException
+    : public std::exception
+{
+    
+};
 
 enum class BlockState : int
 {
@@ -35,6 +43,15 @@ class Game final
         virtual void handleEvent(SDL_Event const& event) override;
         virtual void draw(Surface_ptr a_parent) override;
 
+        unsigned int getScore()
+        {
+            return m_score;
+        }
+
+        unsigned int getLevel()
+        {
+            return m_speed;
+        }
 
         static const unsigned short wellWidth    = 10;
         static const unsigned short wellHeight   = 20;
@@ -74,11 +91,12 @@ class Game final
         // Calls spawnPiece with m_nextPieceID, and generates a new value for m_nextPieceID.
         void newPiece();
 
+
         // Determines the position of the pivot block of the falling piece.
         SDL_Rect findPivot();
 
         // Returns a vector of coordinates in the well where the falling piece is.
-        std::vector<std::pair<int, int>> findPiece();
+        std::vector<std::pair<unsigned int, unsigned int>> findPiece();
 
         /** Check the well to see if a line has been filled horizontally.
          * Called by updateBlocks only in the event of a collision.
@@ -112,9 +130,9 @@ class Game final
          * Return value represents the success of the movement.
          * Only the sign of direction is relevant. Positive is right, negative is left.
          */
-        bool movePiece(unsigned int dx, int direction, std::vector<std::pair<int, int>> & piece);
+        bool movePiece(unsigned int dx, int direction, std::vector<std::pair<unsigned int, unsigned int>> & piece);
 
-        bool movePiece(unsigned int dx, int direction, std::vector<std::pair<int, int>> && piece)
+        bool movePiece(unsigned int dx, int direction, std::vector<std::pair<unsigned int, unsigned int>> && piece)
         {
             return movePiece(dx, direction, piece);
         }
@@ -135,6 +153,8 @@ class Game final
         {
             return (Application*)m_parent;
         }
+
+        bool m_fallFaster;
 
         unsigned int m_score; // the player's score 
         unsigned int m_clearedLines; // number of lines cleared by the player

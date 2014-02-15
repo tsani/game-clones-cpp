@@ -1,8 +1,5 @@
 #include "Game.h"
-
 #include "Application.h"
-
-#include <cmath>
 
 Game::Game(Application* a_owner)
     : State (a_owner)
@@ -12,6 +9,8 @@ Game::Game(Application* a_owner)
     m_rdistribution = std::uniform_int_distribution<int>(0, 6); // there are 7 possible pieces
 
     m_rotationLevel = 0;
+
+    m_fallFaster = false;
 
     for ( unsigned int i = 0; i < wellWidth; i++ )
         for ( unsigned int j = 0; j < wellHeight; j++ )
@@ -27,8 +26,8 @@ void Game::load()
     Surface_ptr fallingSurface = makeSafeSurfacePtr(SDL_CreateRGBSurface(SDL_HWSURFACE, blockSide, blockSide, Application::screenDepth, 0, 0, 0, 0));
     Surface_ptr fallenSurface  = makeSafeSurfacePtr(SDL_CreateRGBSurface(SDL_HWSURFACE, blockSide, blockSide, Application::screenDepth, 0, 0, 0, 0));
     Surface_ptr freeSurface = makeSafeSurfacePtr(SDL_CreateRGBSurface(SDL_HWSURFACE, blockSide, blockSide, Application::screenDepth, 0, 0, 0, 0));
-    SDL_FillRect(fallingSurface.get(), NULL, SDL_MapRGB(getOwner()->getScreen().lock()->format, 255, 64, 64));
-    SDL_FillRect(fallenSurface.get(), NULL, SDL_MapRGB(getOwner()->getScreen().lock()->format, 64, 64, 255));
+    SDL_FillRect(fallingSurface.get(), nullptr, SDL_MapRGB(getOwner()->getScreen().lock()->format, 255, 64, 64));
+    SDL_FillRect(fallenSurface.get(), nullptr, SDL_MapRGB(getOwner()->getScreen().lock()->format, 64, 64, 255));
     SDL_FillRect(freeSurface.get(), makeSafeRectPtr(8, 8, 16, 16).get(), SDL_MapRGB(getOwner()->getScreen().lock()->format, 128, 128, 128));
 
     m_blockSurfaces[BlockState::falling] = fallingSurface;
@@ -61,16 +60,26 @@ void Game::load()
 
 void Game::cleanup()
 {
-
+    State::cleanup();
 }
 
 void Game::update()
 {
     static unsigned long int frameNumber = 0;
 
-    // Make the blocks fall only once every (speedLimit / m_speed) frames
-    if ( frameNumber % (speedLimit / m_speed) == 0 )
-        updateBlocks();
+    try
+    {
+        // Make the blocks fall only once every (speedLimit / m_speed) frames
+        if ( frameNumber % (speedLimit / (m_fallFaster ? 10 > m_speed ? 10 : m_speed : m_speed)) == 0 )
+            updateBlocks();
+    }
+    catch (GameOverException)
+    {
+        setState(AppState::finished);
+        m_next = std::shared_ptr<State>(new GameOverState(getOwner(), m_score, m_speed));
+    }
+
+    State::update();
 
     frameNumber++;
 }
@@ -85,7 +94,7 @@ void Game::removeFallingPiece()
 
 bool Game::spawnPiece(int x, int y, unsigned int pieceID, int rotationID)
 {
-    if ( pieceID < 0 || pieceID > 6 || rotationID < 0 || rotationID > 3 )
+    if ( pieceID > 6 || rotationID < 0 || rotationID > 3 )
         throw std::exception(); // TODO make this more descriptive.
 
     std::map<std::pair<int, int>, BlockState> pieceData;
@@ -128,7 +137,9 @@ bool Game::spawnPiece(int x, int y, unsigned int pieceID, int rotationID)
 
 void Game::newPiece()
 {
-    spawnPiece(pieceStartX, pieceStartY, m_nextPieceID);
+    if ( ! spawnPiece(pieceStartX, pieceStartY, m_nextPieceID) )
+        throw GameOverException();
+
     m_nextPieceID = m_rdistribution(m_rengine);
 }
 
@@ -147,6 +158,9 @@ void Game::handleEvent(SDL_Event const& event)
                     movePiece(1, 1);
                     // std::cerr << "Piece moved right!" << status << std::endl;
                     break;
+                case SDLK_DOWN:
+                    m_fallFaster = false;
+                    break;
                 case SDLK_z:
                     rotate(1);
                     break;
@@ -159,6 +173,10 @@ void Game::handleEvent(SDL_Event const& event)
                 default:
                     break;
             }
+            break;
+        case SDL_KEYDOWN:
+            if ( event.key.keysym.sym == SDLK_DOWN )
+                m_fallFaster = true;
             break;
     }
 }
@@ -219,60 +237,47 @@ void Game::drawPreviewBox(Surface_ptr a_parent)
 
 bool Game::updateBlocks()
 {
-    std::vector<std::pair<unsigned int, unsigned int>> toShift;
+    std::map<std::pair<unsigned int, unsigned int>, BlockState> toShift;
+    std::vector<std::pair<unsigned int, unsigned int>> currentPiece;
     bool collided = false;
 
-    for ( int i = 0; i < wellWidth; i++ )
+    currentPiece = findPiece();
+
+    for ( auto &p : currentPiece )
     {
-        for ( int j = wellHeight - 1; j >= 0; j-- )
+        if ( p.second + 1 < wellHeight && m_well[p.first][p.second + 1] != BlockState::fallen )
         {
-            if ( m_well[i][j] == BlockState::falling || m_well[i][j] == BlockState::pivot )
-            {
-                if ( j + 1 < wellHeight && m_well[i][j + 1] != BlockState::fallen)
-                {
-                    toShift.push_back(std::pair<unsigned int, unsigned int>(i, j));
-                }
-                else
-                {
-                    collideBlocks(i, j);
-                    handleRows();
-                    collided = true;
-                    newPiece(); // spawn a new piece seeing as the current one is finished now.
-                }
-            }
+            toShift[p] = m_well[p.first][p.second];
+        }
+        else
+        {
+            for ( auto &q : currentPiece )
+                m_well[q.first][q.second] = BlockState::fallen;
+            handleRows();
+            collided = true;
+            newPiece();
+            break;
         }
     }
 
-    if ( !collided && toShift.size() > 0 )
+    if ( !collided )
     {
-        for ( auto &point : toShift )
+        if ( toShift.size() > 0 )
         {
-            m_well[point.first][point.second + 1] = m_well[point.first][point.second];
-            m_well[point.first][point.second] = BlockState::free;
-            // std::cerr << "Block at " << point.first << ", " << point.second << " fell!" << std::endl;
+            removeFallingPiece();
+            for ( auto &point : toShift )
+            {
+                m_well[point.first.first][point.first.second + 1] = point.second;
+                // std::cerr << "Block at " << point.first << ", " << point.second << " fell!" << std::endl;
+            }
+        }
+        else // very special case that occurs when the game is lost by falling
+        {
+            return true;
         }
     }
 
     return collided;
-}
-
-void Game::collideBlocks(int x, int y)
-{
-    if ( m_well[x][y] == BlockState::falling || m_well[x][y] == BlockState::pivot )
-    {
-        m_well[x][y] = BlockState::fallen;
-    }
-    else
-        return;
-
-    if ( x + 1 < wellWidth )
-        collideBlocks(x + 1, y);
-    if ( y + 1 < wellHeight )
-        collideBlocks(x, y + 1);
-    if ( x - 1 >= 0 )
-        collideBlocks(x - 1, y);
-    if ( y - 1 >= 0 )
-        collideBlocks(x, y - 1);
 }
 
 void Game::removeRows(std::vector<int> && a_rows)
@@ -378,18 +383,18 @@ bool Game::rotate(int direction)
 
 }
 
-bool Game::movePiece(unsigned int dx, int direction, std::vector<std::pair<int, int>> & piece)
+bool Game::movePiece(unsigned int dx, int direction, std::vector<std::pair<unsigned int, unsigned int>> & piece)
 {
     int direction_ = std::abs(direction) / direction; // make sure it's just the sign
     if ( dx > 1 )
         if ( ! movePiece(dx - 1, direction, piece) )
             return false;
 
-    std::map<std::pair<int, int>, BlockState> pieceData;
+    std::map<std::pair<unsigned int, unsigned int>, BlockState> pieceData;
 
     for ( auto &p : piece ) // this loop checks that the movement is possible (will not collide with anything
     {
-        if ( ! ( p.first + direction_ >= 0 && 
+        if ( ! ( !(p.first == 0 && direction_ < 0) && 
                  p.first + direction_ < wellWidth && 
                  m_well[p.first + direction_][p.second] != BlockState::fallen
                )
@@ -409,7 +414,7 @@ bool Game::movePiece(unsigned int dx, int direction, std::vector<std::pair<int, 
         p.first += direction_; // and we shift over this block
     }
 
-    for ( auto &p : piece ) // we recreate the piece at the old location
+    for ( auto &p : piece ) // we recreate the piece at the new location
     {
         m_well[p.first][p.second] = pieceData[p];
     }
@@ -419,7 +424,15 @@ bool Game::movePiece(unsigned int dx, int direction, std::vector<std::pair<int, 
 
 void Game::fall()
 {
-    while ( ! updateBlocks() );
+    try
+    {
+        while ( ! updateBlocks() );
+    }
+    catch (GameOverException)
+    {
+        setState(AppState::finished);
+        m_next = std::shared_ptr<State>(new GameOverState(getOwner(), m_score, m_speed));
+    }
 }
 
 SDL_Rect Game::findPivot()
@@ -436,7 +449,7 @@ SDL_Rect Game::findPivot()
     throw std::exception();
 }
 
-std::vector<std::pair<int, int>> Game::findPiece()
+std::vector<std::pair<unsigned int, unsigned int>> Game::findPiece()
 {
     SDL_Rect pivot; 
     
@@ -446,10 +459,10 @@ std::vector<std::pair<int, int>> Game::findPiece()
     }
     catch(std::exception)
     {
-        return std::vector<std::pair<int, int>>();
+        return std::vector<std::pair<unsigned int, unsigned int>>();
     }
 
-    std::vector<std::pair<int, int>> piece;
+    std::vector<std::pair<unsigned int, unsigned int>> piece;
 
     short xstart = pivot.x - 2 < 0 ? 0 : pivot.x - 2;
     short xend   = pivot.x + 2 >= wellWidth ? wellWidth : pivot.x + 3;
