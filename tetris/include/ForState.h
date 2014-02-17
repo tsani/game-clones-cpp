@@ -1,21 +1,23 @@
 #ifndef FORSTATE_H
 #define FORSTATE_H
 
+#include <functional>
+
 #include "State.h"
 
-template<typename Update_t, typename Callback_t>
+template<typename Iterator_t = int>
 class ForState
     : public State
 {
     public:
-        ForState(const State *a_parent, int a_start, int a_end, Update_t a_update, Callback_t a_callback)
-            : State(a_parent), m_value(a_start), m_end(a_end), m_update(a_update), m_callback(a_callback)
+        ForState(const State *a_parent, Iterator_t a_start, Iterator_t a_end, std::function<void(Iterator_t)> a_updater, std::function<void()> a_callback)
+            : State(a_parent), m_value(a_start), m_end(a_end), m_update(a_updater), m_callback(a_callback)
         {
         }
 
         virtual void update() override
         {
-            if ( m_value < m_end )
+            if ( m_value != m_end )
             {
                 m_update(m_value);
                 m_value++;
@@ -27,12 +29,16 @@ class ForState
                 // If we do, and this object gets cleaned up prematurely, then the callback gets called...
                 // not sure if this is desirable.
                 m_callback();
-                cleanup();
+                // cleanup sets the status to finished, which will cause the forstate to be cleaned up
+                // by the parent.
+                cleanup(); 
             }
 
             State::update();
         }
 
+        // We expose setNext publicly so that the parent state can use the forstate to delay the entry
+        // of another state, for example.
         void setNext(State_ptr next)
         {
             m_next = next;
@@ -45,18 +51,16 @@ class ForState
 
     private:
         int m_value, m_end;
-        Update_t m_update;
-        Callback_t m_callback;
+        std::function<void(Iterator_t)> m_update;
+        std::function<void()> m_callback;
 
 };
 
-static constexpr auto empty = [] (int) {};
-
-template<class Callback>
-std::shared_ptr<ForState<decltype(empty), Callback>> 
-makeDelay(const State *a_parent, int a_frames, Callback & cb)
+template<typename T = int>
+std::shared_ptr<ForState<T>> 
+makeDelay(const State *a_parent, int a_frames, std::function<void()> cb)
 {
-    return std::make_shared<ForState<decltype(empty), Callback>>(a_parent, 0, a_frames, empty, cb);
+    return std::make_shared<ForState<T>>(a_parent, 0, a_frames, [] (int) {}, cb);
 }
 
 #endif

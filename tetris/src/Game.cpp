@@ -248,7 +248,7 @@ void Game::handleRows()
         auto callback_f = [this, rows] () {
             handleGenNewPiece();
             m_clearingSurfaces.clear();
-            m_score += baseRowScore * std::pow(2, rows.size() - 1); // TODO bells!!!
+            m_score += baseRowScore * rows.size() * std::pow(2, rows.size() - 1); // TODO bells!!!
             m_clearedLines += rows.size();
             m_well.removeRows(std::move(rows));
             handleSpeed();
