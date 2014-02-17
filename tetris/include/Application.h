@@ -14,6 +14,7 @@
 #include "util_SDL.h"
 
 #include "State.h"
+#include "MenuState.h"
 #include "Game.h"
 
 
@@ -27,7 +28,7 @@ class Application final
          */
         int run();
 
-        std::weak_ptr<SDL_Surface> getScreen();
+        std::weak_ptr<SDL_Surface> getScreen() const;
 
         static const unsigned int screenHeight = 700;
         static const unsigned int screenWidth  = 950;

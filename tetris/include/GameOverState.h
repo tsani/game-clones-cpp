@@ -13,7 +13,7 @@ class GameOverState
     : public State
 {
     public:
-        GameOverState (Application *a_parent, unsigned int a_score, unsigned int a_speed);
+        GameOverState (const Application *a_parent, unsigned int a_score, unsigned int a_speed);
 
         virtual void load() override;
         // We don't need to override `cleanup`.
@@ -22,6 +22,11 @@ class GameOverState
         virtual void draw(Surface_ptr a_parent) override;
 
     private:
+        const Application * getOwner()
+        {
+            return (const Application*)m_parent;
+        }
+
         Surface_ptr m_scoreSurface, m_levelSurface, m_gameOverSurface;
         unsigned int m_score, m_level;
         Font_ptr m_font;

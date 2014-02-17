@@ -1,12 +1,12 @@
 #include "Application.h"
 
 Application::Application()
-    : State(nullptr) 
+    : State((const State*)nullptr), m_screen(nullptr)
 {
-    m_child = State_ptr { new Game(this) };
+    m_child = std::make_shared<MenuState>(this);
 }
 
-std::weak_ptr<SDL_Surface> Application::getScreen()
+std::weak_ptr<SDL_Surface> Application::getScreen() const
 {
     return std::weak_ptr<SDL_Surface>(m_screen);
 }
@@ -49,8 +49,8 @@ int Application::run()
     {
         if ( !skipFrame )
             draw (m_screen);
-        else
-            std::cerr << "Skipped frame!" << std::endl;
+        //else
+        //    std::cerr << "Skipped frame!" << std::endl;
 
         thisTime = SDL_GetTicks(); // the current time
         deltaTime = thisTime - lastTime; // how long did it take to draw the last frame.

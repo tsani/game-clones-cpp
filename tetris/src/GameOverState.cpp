@@ -1,8 +1,8 @@
 #include "GameOverState.h"
-
+#include "MenuState.h"
 #include "Application.h"
 
-GameOverState::GameOverState(Application *a_parent, unsigned int a_score, unsigned int a_speed)
+GameOverState::GameOverState(const Application *a_parent, unsigned int a_score, unsigned int a_speed)
     : State(a_parent), m_scoreSurface(nullptr), m_levelSurface(nullptr), m_gameOverSurface(nullptr),
       m_score(a_score), m_level(a_speed), m_font(nullptr), m_textColorFg(SDL_Color { 255, 255, 255 }),
       m_textColorBg (SDL_Color { 0, 0, 0 })
@@ -35,15 +35,18 @@ void GameOverState::load()
 void GameOverState::handleEvent(SDL_Event const& event)
 {
     if ( event.type == SDL_KEYUP )
+    {
         setState(AppState::finished);
+        m_next = std::make_shared<MenuState>(getOwner());
+    }
 }
 
 void GameOverState::draw(Surface_ptr a_parent)
 {
-    static SDL_Rect gameOverTextPosition { a_parent->w / 2 - m_gameOverSurface->w / 2,
-                                           a_parent->h / 2 - m_gameOverSurface->h / 2, 0, 0 };
-    static SDL_Rect scoreTextPosition { gameOverTextPosition.x, gameOverTextPosition.y + 25, 0, 0 };
-    static SDL_Rect levelTextPosition { gameOverTextPosition.x, scoreTextPosition.y + 25, 0, 0 };
+    static SDL_Rect gameOverTextPosition { (short)(a_parent->w / 2 - m_gameOverSurface->w / 2),
+                                           (short)(a_parent->h / 2 - m_gameOverSurface->h / 2), 0, 0 };
+    static SDL_Rect scoreTextPosition { gameOverTextPosition.x, (short)(gameOverTextPosition.y + 25), 0, 0 };
+    static SDL_Rect levelTextPosition { gameOverTextPosition.x, (short)(scoreTextPosition.y + 25), 0, 0 };
 
     if ( SDL_BlitSurface (m_gameOverSurface.get(), NULL, a_parent.get(), &gameOverTextPosition)
             != 0 )

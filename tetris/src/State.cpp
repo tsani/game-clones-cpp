@@ -1,6 +1,6 @@
 #include "State.h"
 
-State::State (State *a_parent)
+State::State (const State *a_parent)
     : m_parent (a_parent), m_child (nullptr), m_next (nullptr), m_status (AppState::notReady)
 {
 
@@ -89,4 +89,14 @@ void State::setChild (State_ptr a_child)
         throw std::exception ();
 
     m_child = a_child;
+}
+
+State_ptr State::getNextState()
+{
+    return m_next;
+}
+
+AppState State::getStatus()
+{
+    return m_status;
 }

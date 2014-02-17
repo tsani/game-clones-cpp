@@ -26,7 +26,7 @@ enum class AppState
 class State
 {
     public:
-        State (State *a_parent);
+        State (const State *a_parent);
 
         virtual void update ();
         virtual void draw (Surface_ptr a_parent);
@@ -36,12 +36,15 @@ class State
 
         virtual void activate ();
 
+        virtual State_ptr getNextState();
+        virtual AppState getStatus();
+
     protected:
         virtual void setState (AppState a_state);
         virtual void setNext (State_ptr a_next); // a_next should have status ready.
         virtual void setChild (State_ptr a_child); // a_next should have status ready.
 
-        State *m_parent;
+        const State *m_parent;
         State_ptr m_child, m_next; // before becoming finished, this state must provide a value for next
         // as the parent state must replace its child with its child's next state.
         
