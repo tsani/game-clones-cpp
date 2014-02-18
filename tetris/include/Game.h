@@ -101,7 +101,8 @@ class Game final
 
         Surface_ptr m_pieceSurface,
                     m_fallenSurface,
-                    m_freeSurface;
+                    m_freeSurface,
+                    m_fallenPreviewSurface;
 
         Font_ptr m_statusFont;   // the font used to draw the level number and the score.
         Surface_ptr m_scoreSurface, // the text is rendered into these surfaces only when it changes.

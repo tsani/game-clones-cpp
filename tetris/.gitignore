@@ -1,3 +1,4 @@
 obj/
-bin/tetris
-bin/tetris.exe
+dist/
+bin/
+

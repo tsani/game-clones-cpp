@@ -17,6 +17,40 @@ void MenuState::load()
                                                            SDL_Color {255, 255, 255}, 
                                                            SDL_Color {0,   0,   0  }));
 
+    auto makeLine = [this] (const char* text) 
+    {
+        return makeSafeSurfacePtr(TTF_RenderText_Shaded(m_menuFont.get(), text, 
+                    SDL_Color {255, 255, 255}, SDL_Color {0, 0, 0}));
+    };
+    
+    std::vector<Surface_ptr> lines; 
+    lines.push_back(makeLine("<Left> and <Right> to move the piece and in the menu."));
+    lines.push_back(makeLine("<Enter> selects an initial speed in the menu."));
+    lines.push_back(makeLine("<Z> and <X> rotate the piece counterclockwise and clockwise."));
+    lines.push_back(makeLine("<Space> jumps to the bottom, and <Down> makes it fall faster."));
+
+    short helpHeight = 0, helpWidth = 0;
+
+    for ( auto &p : lines )
+    {
+        helpWidth = std::max((int)helpWidth, p->w);
+        helpHeight += p->h;
+    }
+
+    m_helpText = makeSafeSurfacePtr(SDL_CreateRGBSurface(SDL_HWSURFACE, helpWidth, helpHeight, 
+                Application::screenDepth, 0, 0, 0, 0));
+
+    helpHeight = 0;
+
+    for ( unsigned int i = 0; i < lines.size(); i++ )
+    {
+        SDL_Rect drawPosition { (short)(helpWidth / 2 - lines[i]->w / 2), helpHeight, 0, 0 };
+        SDL_BlitSurface(lines[i].get(), nullptr, m_helpText.get(), &drawPosition);
+        helpHeight += lines[i]->h;
+    }
+
+    m_speedSelectText = makeLine("Select initial speed. (Recommended: 3 or 4.)");
+
     std::stringstream ss;
     for ( unsigned int i = 0; i < maxSpeed; i++ )
     {
@@ -47,7 +81,14 @@ void MenuState::load()
     m_titlePosition = SDL_Rect { (short)(getOwner()->getScreen().lock()->w / 2 - m_titleText->w / 2),
                                  (short)(m_titleText->h / 2 + 100), 0, 0 };
     m_initialSpeedPosition = SDL_Rect { (short)(getOwner()->getScreen().lock()->w / 2 - (m_boxWidth * maxSpeed + buttonSpacing * (maxSpeed - 1)) / 2),
-                                        (short)(m_titlePosition.y + m_titleText->h + 100), 0, 0 };
+                                        (short)(m_titlePosition.y + m_titleText->h + 100) };
+
+    m_helpPosition = SDL_Rect { (short)(getOwner()->getScreen().lock()->w / 2 - m_helpText->w / 2),
+                                (short)(m_initialSpeedPosition.y + m_boxHeight + 50) };
+
+    m_speedSelectPosition = SDL_Rect { (short)(getOwner()->getScreen().lock()->w / 2 - 
+                                       m_speedSelectText->w / 2), (short)(m_initialSpeedPosition.y -
+                                       m_speedSelectText->h) };
 
     State::load();
 }
@@ -55,6 +96,8 @@ void MenuState::load()
 void MenuState::draw(Surface_ptr a_parent)
 {
     SDL_BlitSurface(m_titleText.get(), nullptr, a_parent.get(), &m_titlePosition);
+    SDL_BlitSurface(m_helpText.get(), nullptr, a_parent.get(), &m_helpPosition);
+    SDL_BlitSurface(m_speedSelectText.get(), nullptr, a_parent.get(), &m_speedSelectPosition);
 
     SDL_Rect drawLocation;
 

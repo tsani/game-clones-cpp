@@ -89,7 +89,7 @@ class Well final
         Piece const& getPiece() const;
 
         // A Piece representing the current piece as if `fall` had hypothetically been called.
-        Piece getFallenPiece() const;
+        Piece getFallenPiece();
 
         unsigned int getWellWidth() const;
         unsigned int getWellHeight() const;
@@ -124,7 +124,10 @@ class Well final
         void setBlock(Point const& p, bool b);
 
         WellMatrix m_well;
-        Piece m_piece;
+        Piece m_piece; 
+
+        Piece m_fallenPieceMemo;
+        unsigned int m_fallenPieceMemoID;
         
         unsigned int m_wellWidth, m_wellHeight;
         unsigned int m_pieceID, m_nextPieceID;

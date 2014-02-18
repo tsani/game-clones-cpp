@@ -248,19 +248,31 @@ Well::Piece const& Well::getPiece() const
     return m_piece;
 }
 
-Well::Piece Well::getFallenPiece() const
+Well::Piece Well::getFallenPiece() 
 {
-    static Piece memo;
     static Piece result;
 
-    if ( memo == m_piece )
+    if ( m_fallenPieceMemoID == m_pieceID && [] (Piece const& fallenPieceMemo, Piece const& piece) 
+            {
+                if ( fallenPieceMemo.size() != piece.size() )
+                    return false;
+
+                for ( unsigned int i = 0; i < fallenPieceMemo.size(); i++ )
+                {
+                    if ( fallenPieceMemo[i].location.first != piece[i].location.first )
+                        return false;
+                }
+                return true;
+            } (m_fallenPieceMemo, m_piece)
+       )
         return result;
     else
     {
         Piece p(m_piece); // copy the current piece into a temporary;
         fall(p);
 
-        memo = m_piece;
+        m_fallenPieceMemo = m_piece;
+        m_fallenPieceMemoID = m_pieceID;
         result = p;
         return p;
     }

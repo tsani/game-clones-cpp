@@ -1,10 +1,6 @@
 #ifndef APPLICATION_H
 #define APPLICATION_H
 
-#include <SDL/SDL.h>
-#include <SDL/SDL_image.h>
-#include <SDL/SDL_ttf.h>
-
 #include <string>
 #include <vector>
 #include <memory>

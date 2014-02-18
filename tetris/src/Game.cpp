@@ -5,6 +5,8 @@ Game::Game(const Application* a_owner, unsigned int a_initialSpeed)
     : State (a_owner), m_well(wellWidth, wellHeight)
 {
     m_speed = a_initialSpeed;
+    m_score = 0;
+    m_clearedLines = 0;
 
     m_fallFaster = false;
     m_falling = true;
@@ -24,16 +26,18 @@ void Game::load()
     m_fallenSurface  = makeSafeSurfacePtr(SDL_CreateRGBSurface(SDL_HWSURFACE, blockSide, blockSide, Application::screenDepth, 0, 0, 0, 0));
     m_freeSurface = makeSafeSurfacePtr(SDL_CreateRGBSurface(SDL_HWSURFACE, blockSide, blockSide, Application::screenDepth, 0, 0, 0, 0));
     m_clearedSurface = makeSafeSurfacePtr(SDL_CreateRGBSurface(SDL_HWSURFACE, blockSide * m_well.getWellWidth(), blockSide, Application::screenDepth, 0, 0, 0, 0));
+    m_fallenPreviewSurface = makeSafeSurfacePtr(SDL_CreateRGBSurface(SDL_HWSURFACE, blockSide, blockSide, Application::screenDepth, 0, 0, 0, 0));
     SDL_FillRect(m_pieceSurface.get(), nullptr, SDL_MapRGB(getOwner()->getScreen().lock()->format, 255, 64, 64));
     SDL_FillRect(m_fallenSurface.get(), nullptr, SDL_MapRGB(getOwner()->getScreen().lock()->format, 64, 64, 255));
-    SDL_FillRect(m_freeSurface.get(), makeSafeRectPtr(4, 4, 24, 24).get(), SDL_MapRGB(getOwner()->getScreen().lock()->format, 128, 128, 128));
+    SDL_FillRect(m_freeSurface.get(), makeSafeRectPtr(8, 8, 16, 16).get(), SDL_MapRGB(getOwner()->getScreen().lock()->format, 128, 128, 128));
     SDL_FillRect(m_clearedSurface.get(), nullptr, SDL_MapRGB(getOwner()->getScreen().lock()->format, 255, 255, 255));
+    SDL_FillRect(m_fallenPreviewSurface.get(), nullptr, SDL_MapRGB(getOwner()->getScreen().lock()->format, 64, 255, 64));
 
     m_wellPosition.x = getOwner()->screenWidth / 2 - m_well.getWellWidth() * blockSide / 2;
     m_wellPosition.y = getOwner()->screenHeight / 2 - m_well.getWellHeight() * blockSide / 2;
 
     m_piecePreviewPosition.x = m_wellPosition.x + (m_well.getWellWidth() + 2) * blockSide;
-    m_piecePreviewPosition.y = m_wellPosition.y + 4 * blockSide;
+    m_piecePreviewPosition.y = m_wellPosition.y + 8 * blockSide;
 
     m_statusLocation.x = 20;
     m_statusLocation.y = 100;
@@ -129,14 +133,24 @@ void Game::draw(Surface_ptr a_parent)
         }
     }
 
-    for ( auto &p : m_well.getPiece() )
+    auto drawPiece = [this, a_parent] (Well::Piece const& piece, Surface_ptr pieceSurface)
     {
-        drawLocation.x = m_wellPosition.x + (short)(p.location.first * blockSide);
-        drawLocation.y = m_wellPosition.y + (short)(p.location.second * blockSide);
+        SDL_Rect drawLocation { 0, 0, 0, 0 };
 
-        if ( SDL_BlitSurface(m_pieceSurface.get(), nullptr, a_parent.get(), &drawLocation) != 0 )
-            std::cerr << "Failed to draw piece surface." << std::endl;
-    }
+        for ( auto &p : piece )
+        {
+            drawLocation.x = m_wellPosition.x + (short)(p.location.first * blockSide);
+            drawLocation.y = m_wellPosition.y + (short)(p.location.second * blockSide);
+
+            if ( SDL_BlitSurface(pieceSurface.get(), nullptr, a_parent.get(), &drawLocation) != 0 )
+                std::cerr << "Failed to draw piece surface." << std::endl;
+        }
+    };
+
+    drawPiece(m_well.getPiece(), m_pieceSurface);
+
+    if ( m_falling )
+        drawPiece(m_well.getFallenPiece(), m_fallenPreviewSurface);
 
     for ( auto &p : m_clearingSurfaces )
     {
@@ -173,9 +187,9 @@ void Game::drawPreviewBox(Surface_ptr a_parent)
         for ( int j = 0; j < 5; j++ )
         {
             drawLocation.y = m_piecePreviewPosition.y = j * blockSide;
-            if( SDL_BlitSurface((PIECES[m_well.getNextPieceID()][0][i][j] == 0 ? m_freeSurface : m_pieceSurface).get(), 
+            if( SDL_BlitSurface((PIECES[m_well.getNextPieceID()][0][j][i] == 0 ? m_freeSurface : m_pieceSurface).get(), 
                         nullptr, a_parent.get(), &drawLocation) != 0 )
-                std::cerr << "Failed to draw previed block at " << i << ", " << j << std::endl;
+                std::cerr << "Failed to draw preview block at " << i << ", " << j << std::endl;
         }
     }
                                   
@@ -219,7 +233,7 @@ void Game::handleSpeed()
     if ( m_speed < ts )
     {
         m_speed = ts;
-        // std::cerr << "Speed up! " << ts << std::endl;
+        std::cerr << "Speed up! " << ts << std::endl;
         renderLevel();
     }
 }
@@ -229,7 +243,7 @@ void Game::handleGenNewPiece()
     if ( ! m_well.newPiece() )
     {
         setState(AppState::finished);
-        m_next = State_ptr { new GameOverState(getOwner(), m_score, m_speed) };
+        m_next = State_ptr { new GameOverState(getOwner(), m_score, m_speed, m_clearedLines) };
     }
     else
     {

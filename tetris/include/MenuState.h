@@ -37,6 +37,12 @@ class MenuState final
         SDL_Rect m_titlePosition;
         Surface_ptr m_titleText;
 
+        SDL_Rect m_speedSelectPosition;
+        Surface_ptr m_speedSelectText;
+
+        SDL_Rect m_helpPosition;
+        Surface_ptr m_helpText;
+
         SDL_Rect m_initialSpeedPosition;
         unsigned short m_boxWidth, m_boxHeight;
         Surface_ptr m_selectedSpeedSurface, m_unselectedSpeedSurface;
