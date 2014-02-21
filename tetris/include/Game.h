@@ -88,7 +88,7 @@ class Game final
 
         Well m_well;
 
-        bool m_fallFaster, m_falling;
+        bool m_fallFaster, m_falling, m_easyMode;
 
         unsigned int m_time; // how long has the current piece been in the screen
 

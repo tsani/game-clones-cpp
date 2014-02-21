@@ -14,10 +14,16 @@ Well::Well(unsigned int a_width, unsigned int a_height)
         }
     }
 
+    std::random_device seeder;
+
+    m_rengine.seed(seeder());
+
     m_wellWidth = a_width;
     m_wellHeight = a_height;
 
     m_nextPieceID = m_rdistribution(m_rengine);
+
+    m_fallenPieceMemoID = 0;
 
     m_rotationID = 0;
 }

@@ -48,8 +48,8 @@ void GameOverState::handleEvent(SDL_Event const& event)
 void GameOverState::draw(Surface_ptr a_parent)
 {
     static SDL_Rect gameOverTextPosition { (short)(a_parent->w / 2 - m_gameOverSurface->w / 2),
-                                           (short)(a_parent->h / 2 - m_gameOverSurface->h / 2), 0, 0 };
-    static SDL_Rect scoreTextPosition { gameOverTextPosition.x, (short)(gameOverTextPosition.y + m_gameOverSurface->h + 5), 0, 0 };
+                                           (short)(a_parent->h / 3 - m_gameOverSurface->h / 2), 0, 0 };
+    static SDL_Rect scoreTextPosition { gameOverTextPosition.x, (short)(gameOverTextPosition.y + m_gameOverSurface->h + 50), 0, 0 };
     static SDL_Rect levelTextPosition { gameOverTextPosition.x, (short)(scoreTextPosition.y + m_scoreSurface->h + 5), 0, 0 };
     static SDL_Rect linesTextPosition { gameOverTextPosition.x, (short)(levelTextPosition.y + m_levelSurface->h + 5), 0, 0 };
     static SDL_Rect skillTextPosition { gameOverTextPosition.x, (short)(linesTextPosition.y + m_linesSurface->h + 5), 0, 0 };

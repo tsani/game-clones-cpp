@@ -10,6 +10,7 @@ Game::Game(const Application* a_owner, unsigned int a_initialSpeed)
 
     m_fallFaster = false;
     m_falling = true;
+    m_easyMode = false;
 
     m_child = State_ptr { new MultiState(this) };
 
@@ -83,29 +84,41 @@ void Game::handleEvent(SDL_Event const& event)
         case SDL_KEYUP:
             switch ( event.key.keysym.sym )
             {
-                case SDLK_LEFT:
-                    m_well.movePiece(-1);
-                    // std::cerr << "Piece moved left: " << status << std::endl;
-                    break;
-                case SDLK_RIGHT:
-                    m_well.movePiece(1);
-                    // std::cerr << "Piece moved right!" << status << std::endl;
+                case SDLK_g:
+                    m_easyMode = !m_easyMode;
                     break;
                 case SDLK_DOWN:
                     m_fallFaster = false;
                     break;
-                case SDLK_z:
-                    m_well.rotatePiece(Direction::CCW);
-                    break;
-                case SDLK_x:
-                    m_well.rotatePiece(Direction::CW);
-                    break;
-                case SDLK_SPACE:
-                    m_well.fall();
-                    handleNewPiece();
-                    break;
                 default:
                     break;
+            }
+
+            if ( m_falling ) // all this input only makes sense if a piece is falling.
+            {
+                switch ( event.key.keysym.sym )
+                {
+                    case SDLK_LEFT:
+                        m_well.movePiece(-1);
+                        // std::cerr << "Piece moved left: " << status << std::endl;
+                        break;
+                    case SDLK_RIGHT:
+                        m_well.movePiece(1);
+                        // std::cerr << "Piece moved right!" << status << std::endl;
+                        break;
+                    case SDLK_z:
+                        m_well.rotatePiece(Direction::CCW);
+                        break;
+                    case SDLK_x:
+                        m_well.rotatePiece(Direction::CW);
+                        break;
+                    case SDLK_SPACE:
+                        m_well.fall();
+                        handleNewPiece();
+                        break;
+                    default:
+                        break;
+                }
             }
             break;
         case SDL_KEYDOWN:
@@ -149,7 +162,7 @@ void Game::draw(Surface_ptr a_parent)
 
     drawPiece(m_well.getPiece(), m_pieceSurface);
 
-    if ( m_falling )
+    if ( m_falling && m_easyMode )
         drawPiece(m_well.getFallenPiece(), m_fallenPreviewSurface);
 
     for ( auto &p : m_clearingSurfaces )
