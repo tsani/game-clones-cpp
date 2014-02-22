@@ -57,6 +57,8 @@ class Game final
         static const unsigned int   speedStep    = 10;
         static const unsigned int   speedLimit   = 100;
 
+        static const unsigned int   statusChangeEffectTime = 45;
+
     private:
         // Will call getFullRows, and if there are full rows, increase the score accordingly, increase the count of cleared rows, remove the fallen rows, and call handleSpeed.
         void handleRows();
@@ -72,9 +74,9 @@ class Game final
         // Draws the preview box, where the next piece is shown.
         void drawPreviewBox(Surface_ptr a_parent);
 
-        void renderScore();
-        void renderLevel(); // render the level text
-        void renderLines(); // render the text of how many lines have been cleared.
+        void renderStatus(Surface_ptr * dest, std::string const& text, unsigned int value, SDL_Color fg);
+        void renderStatusWithEffect(Surface_ptr * dest, std::string const& text, unsigned int value, SDL_Color fg1, SDL_Color fg2, unsigned int delayTime);
+        void renderStatusWithDefaultEffect(Surface_ptr * dest, std::string const& text, unsigned int value);
 
         const Application *getOwner()
         {
@@ -111,7 +113,8 @@ class Game final
         SDL_Rect m_statusLocation;  // where the game status is rendered;
         // Only one SDL_Rect is necessary, because the level is drawn just a bit lower than the score.
 
-        SDL_Color m_statusColorFg;    // the color the status text is drawn in.
+        SDL_Color m_statusColorFgNormal;    // the color the status text is drawn in.
+        SDL_Color m_statusColorFgEffect;    // used when the value changes.
         SDL_Color m_statusColorBg;
 
         Surface_ptr m_clearedSurface;

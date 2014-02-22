@@ -45,12 +45,13 @@ void Game::load()
 
     m_statusFont    = makeSafeFontPtr(TTF_OpenFont("resources/statusfont.ttf", 20));
 
-    m_statusColorFg = { 255, 255, 255 };
+    m_statusColorFgNormal = { 255, 255, 255 };
+    m_statusColorFgEffect = { 255, 64, 64 };
     m_statusColorBg = { 0, 0, 0 };
 
-    renderScore();
-    renderLevel();
-    renderLines();
+    renderStatus(&m_scoreSurface, "Score: ", m_score, m_statusColorFgNormal);
+    renderStatus(&m_levelSurface, "Level: ", m_speed, m_statusColorFgNormal);
+    renderStatus(&m_linesSurface, "Lines: ", m_clearedLines, m_statusColorFgNormal);
 
     if ( ! m_well.newPiece() )
         std::cerr << "Failed to spawn initial piece." << std::endl;
@@ -208,34 +209,26 @@ void Game::drawPreviewBox(Surface_ptr a_parent)
                                   
 }
 
-void Game::renderLevel()
+void Game::renderStatus(Surface_ptr * dest, std::string const& text, unsigned int value, SDL_Color fg)
 {
     static std::stringstream sb;
 
     sb.clear();
     sb.str("");
-    sb << "Speed: " << m_speed;
-    m_levelSurface = makeSafeSurfacePtr(TTF_RenderText_Shaded(m_statusFont.get(), sb.str().c_str(), m_statusColorFg, m_statusColorBg));
+    sb << text << value;
+    (*dest) = makeSafeSurfacePtr(TTF_RenderText_Shaded(m_statusFont.get(), sb.str().c_str(), fg, m_statusColorBg));
 }
 
-void Game::renderScore()
+void Game::renderStatusWithEffect(Surface_ptr * dest, std::string const& text, unsigned int value, SDL_Color fg1, SDL_Color fg2, unsigned int delayTime)
 {
-    static std::stringstream sb;
-
-    sb.clear();
-    sb.str("");
-    sb << "Score: " << m_score;
-    m_scoreSurface = makeSafeSurfacePtr(TTF_RenderText_Shaded(m_statusFont.get(), sb.str().c_str(), m_statusColorFg, m_statusColorBg));
+    auto f = std::bind(&Game::renderStatus, this, dest, text, value, std::placeholders::_1);
+    f(fg1);
+    getChild()->add(makeDelay(this, delayTime, std::bind(f, fg2)));
 }
 
-void Game::renderLines()
+void Game::renderStatusWithDefaultEffect(Surface_ptr * dest, std::string const& text, unsigned int value)
 {
-    static std::stringstream sb;
-
-    sb.clear();
-    sb.str("");
-    sb << "Lines: " << m_clearedLines;
-    m_linesSurface = makeSafeSurfacePtr(TTF_RenderText_Shaded(m_statusFont.get(), sb.str().c_str(), m_statusColorFg, m_statusColorBg));
+    renderStatusWithEffect(dest, text, value, m_statusColorFgEffect, m_statusColorFgNormal, statusChangeEffectTime);
 }
 
 void Game::handleSpeed()
@@ -247,7 +240,7 @@ void Game::handleSpeed()
     {
         m_speed = ts;
         std::cerr << "Speed up! " << ts << std::endl;
-        renderLevel();
+        renderStatusWithDefaultEffect(&m_levelSurface, "Level: ", m_speed);
     }
 }
 
@@ -279,8 +272,8 @@ void Game::handleRows()
             m_clearedLines += rows.size();
             m_well.removeRows(std::move(rows));
             handleSpeed();
-            renderScore();
-            renderLines();
+            renderStatusWithDefaultEffect(&m_scoreSurface, "Score: ", m_score);
+            renderStatusWithDefaultEffect(&m_linesSurface, "Lines: ", m_clearedLines);
         };
 
         for ( auto i = rows.begin(); i != rows.end(); i++ )
