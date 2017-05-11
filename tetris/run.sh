@@ -1,9 +1,7 @@
 #!/bin/bash
 
-cd bin
-
 if [[ "$1" == "-d" ]] ; then
-    gdb tetris
+    gdb bin/tetris
 else
-    ./tetris
+    bin/tetris
 fi
